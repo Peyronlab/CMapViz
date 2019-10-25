@@ -53,7 +53,6 @@ bubble_plot <- function(path, output_path = NULL) {
 
   df <- rbind(HL60, MCF7, PC3)
   df$p <- as.numeric(df$p)
-  df$p[is.na(df$p)] <- mean(df$p[!is.na(df$p)])
 
 
   df2 <- df %>%
@@ -108,7 +107,7 @@ bubble_plot <- function(path, output_path = NULL) {
     geom_vline(xintercept = 2, colour = "#E7B800", linetype = "dashed") +
     geom_vline(xintercept = 3, colour = "#FC4E07", linetype = "dashed") +
     scale_alpha("Bibliometric\nscore", labels = c("Very high", "High", "Intermediate", "Low", "Very low")) +
-    scale_x_continuous(breaks = c(1:3)) +
+    scale_x_continuous(breaks = seq_len(3)) +
     geom_text(aes(label = cmap.name.and.cell.line), hjust = 0.5, vjust = 0.5) +
     annotate("label", x = 0.82, y = 0.98, label = "Higher ES (1)", fill = "grey95") +
     annotate("label", x = 0.82, y = 0.15, label = "Low ES (0.4)", fill = "grey95")
@@ -120,7 +119,7 @@ bubble_plot <- function(path, output_path = NULL) {
     geom_vline(xintercept = c(1), colour = "#00AFBB", linetype = "dashed") +
     geom_vline(xintercept = 2, colour = "#E7B800", linetype = "dashed") +
     geom_vline(xintercept = 3, colour = "#FC4E07", linetype = "dashed") +
-    scale_x_continuous(breaks = c(1:3)) +
+    scale_x_continuous(breaks = seq_len(3)) +
     geom_text(aes(label = cmap.name.and.cell.line), hjust = 0.5, vjust = 0.5) +
     annotate("label", x = 0.82, y = 0.98, label = "Higher ES (1)", fill = "grey95") +
     annotate("label", x = 0.82, y = 0.15, label = "Low ES (0.4)", fill = "grey95")
