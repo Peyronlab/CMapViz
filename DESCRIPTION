@@ -1,11 +1,22 @@
 Package: CMapViz
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Representation Tool For Output Of CMap Analysis 
+Date: 25/10/2019
+Version: 0.0.1
+Author: Raphaël Bonnet [aut, cre], Jean-François Peyron[aut,ths]
+Maintainer: Raphaël Bonnet <raphael.bonnet@univ-cotedazur.fr>
+Description: Automatically displays graphical visualization for exported data table from CMap (2006) <doi:10.1126/science.1132939>. 
+  It allows the representation of the statistics (p-value and enrichment) according to each cell lines in the form of a bubble plot. 
+  Returns a ggplot object.
+Imports:
+  readxl,
+  ggplot2,
+  dplyr,
+  scales
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 6.1.1
+Suggests: 
+    spelling
+Language: en-US
