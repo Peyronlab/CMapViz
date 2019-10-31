@@ -3,129 +3,194 @@
 #' @import ggplot2
 #' @import readxl
 #' @import dplyr
+#' @import reshape2
 #' @import scales
+#' @import stringr
 #' @title Bubble plot of CMap output table
 #' @description
-#' This function allows the user to represent the CMap results (broadinstitute)
-#' under the form of a bubble plot representing statistics and cell lines.
+#' This function allows the user to represent the CMap result table (broadinstitute)
+#' under the form of a bubble plot representing statistics and cell lines:
+#' - each drug is represented along the y axis according to its enrichment value
+#' - each drug is represented along the x axis according to the cell line tested and
+#' whithin the cell line according to batch specificity (0-50% <- vertical line -> 50-100%)
 #' @name bubble_plot
 #' @rdname bubble_plot
 #' @aliases bubble_plot
 #' @usage
-#' bubble_plot(path, output_path=NULL)
+#' bubble_plot(path, plot, enrichment, abs.enrich.cutoff=NULL, n.rep.cutoff=NULL ,
+#'         jittering=FALSE, return.gg.table= FALSE, output_path = NULL)
 #' @param path path of the excel file
-#' @param output_path path for the experiment output folder (default=NULL)
+#' @param plot what data to plot: molecules only (plot="molecules") or molecules by cell lines batch (plot="cell.lines")
+#' @param enrichment whether to plot positive or negative enrichment
+#' @param abs.enrich.cutoff minimum value of enrichment to include a batch
+#' @param n.rep.cutoff  minimum number of replicates to include a batch (default=NULL)
+#' @param jittering whether apply jittering to the values to avoid points overlap
+#' @param return.gg.table table prepared for ggplot, allows the user to customize the graphical representation
+#' @param output_path path for the experiment output folder, returns data table and figure (default=NULL)
 #'
 #' @examples
-#' # bubble_plot(path, output_path=NULL)
+#' file.path <- system.file("extdata", "example.xls", package = "CMapViz")
+#' bubble_plot(file.path,
+#'     plot = "cell.lines", enrichment = "negative", abs.enrich.cutoff = 0.5,
+#'     n.rep.cutoff = 5, output_path = NULL
+#' )
 #' @return ggplot object - bubble plot
 
 
 
-bubble_plot <- function(path, output_path = NULL) {
-  # table <- read_excel("/media/Storage_HDD/C3M/RNAseq/projet_cg_hsg/Cmap/new/wt_ST3_both.xls",
-  #                           sheet = "by cmap name and cell line")
-  table <- read_excel(path,
-    sheet = "by cmap name and cell line"
-  )
-  # View(table)
-  HL60 <- table[which(table$...3 == "HL60"), ]
-  MCF7 <- table[which(table$...3 == "MCF7"), ]
-  PC3 <- table[which(table$...3 == "PC3"), ]
+bubble_plot <- function(path,
+                        plot,
+                        enrichment,
+                        abs.enrich.cutoff = NULL,
+                        n.rep.cutoff = NULL,
+                        jittering = FALSE,
+                        return.gg.table = FALSE,
+                        output_path = NULL) {
 
-  HL60 <- data.frame(HL60[order(HL60$enrichment), ])
-  HL60 <- HL60[which(HL60$n > 1), ]
-  HL60 <- HL60[which(HL60$p < 0.05), ]
-  HL60 <- HL60[which(HL60$enrichment < 0), ]
-  HL60$rank <- rep(1, 12)
+    # import the specified data
+    if (plot == "cell.lines") {
+        sheet <- "by cmap name and cell line"
+        table <- read_excel(path, sheet = sheet)
+        names <- table$cmap.name.and.cell.line
+        names_and_cl <- colsplit(names, "-(?!.*-)", c("drug", "cell.line"))
+        rank <- rep(1, dim(table)[1])
+        df <- cbind(names_and_cl, table[3:dim(table)[2]], rank)
+    } else if (plot == "molecules") {
+        sheet <- "by cmap name"
+        table <- read_excel(path, sheet = sheet)
+        rank <- rep(1, dim(table)[1])
+        df <- cbind(table[2:dim(table)[2]], rank)
+    }
 
-  MCF7 <- data.frame(MCF7[order(MCF7$enrichment), ])
-  MCF7 <- MCF7[which(MCF7$n > 4), ]
-  MCF7 <- MCF7[which(MCF7$p < 0.05), ]
-  MCF7 <- MCF7[which(MCF7$enrichment < 0), ]
-  MCF7$rank <- rep(2, length(MCF7$rank))
+    # pvalues to numeric, na removed afterwards
+    df$p <- suppressWarnings(as.numeric(df$p))
+    df <- df[-which(df$p > 0.05 | is.na(df$p)), ]
 
-  PC3 <- data.frame(PC3[order(PC3$enrichment), ])
-  PC3 <- PC3[which(PC3$n > 2), ]
-  PC3 <- PC3[which(PC3$p < 0.05), ]
-  PC3 <- PC3[which(PC3$enrichment < 0), ]
-  PC3$rank <- rep(3, length(PC3$rank))
+    #cutoff on replicates number
+    if (!is.null(n.rep.cutoff)) {
+        if (n.rep.cutoff > 1 & n.rep.cutoff > min(df$n)) {
+            df <- df[-which(df$n < n.rep.cutoff), ]
+        } else if (n.rep.cutoff <= 1) {
+            stop("cutoff=NULL already takes all the batches of 1 replicate
+            please set a higher cutoff")
+        }
+    }
 
-  df <- rbind(HL60, MCF7, PC3)
-  df$p <- as.numeric(df$p)
+    #enrichment type
+    if (enrichment == "positive") {
+        df <- df[-which(df$enrichment < 0), ]
+    } else {
+        df <- df[-which(df$enrichment > 0), ]
+    }
 
+    #cutoff on enrichment value
+    if (!is.null(abs.enrich.cutoff)) {
+        if (abs.enrich.cutoff >= 1 | abs.enrich.cutoff <= 0) {
+            stop("abs.enrich.cutoff must be set in the interval 0,1")
+        } else if (abs.enrich.cutoff > min(abs(df$enrichment))) {
+            df <- df[-which(abs(df$enrichment) < abs.enrich.cutoff), ]
+        }
+    }
 
-  df2 <- df %>%
-    mutate(rank2 = jitter(rank, amount = 0.4))
-  df2 <- df2 %>%
-    mutate(enrichment2 = jitter(df2$enrichment, amount = 0.05))
-  names(df2)[7] <- "-log2(pValue)"
-  df2$`-log2(pValue)` <- -log2(df2$`-log2(pValue)` + 0.01)
+    # retreiving the number of cell lines from remaining molecules
+    if (plot == "cell.lines") {
+        n.cell.lines <- length(unique(df$cell.line))
 
-  unique(df2$cmap.name.and.cell.line)
-  # p1 5
-  # p2 2.5
-  # p3 0.5
-  clinical <- c(2, 10 * 2, 1, 1, 1, 39 * 2, 1, 11 * 2, 2, 26 * 2, 2, 1, 1, 1, 48 * 2, 1, 1, 1, 1, 1)
-  # clinical=c(2,10*2,1,1,1,39*2,1,11*2,2,1,1,1,1,1,1,1,1,1,1,1)
-  ifact <- c(3, 2, 3, 1, 1, 3, 1, 2, 3, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1)
-  s <- c(276, 386, 114, 179, 2452, 1708, 20, 3799, 664, 4158, 4024, 301, 16, 339, 5795, 3196, 543, 1, 1, 611)
-  # s=c(14,76,8,9,215,4092,461,273,186,270,247,39,19,85,231,957,21,1,1,21)
-  # alpha=log2(0.01/s)
-  s <- (clinical * s * ifact)
-  alpha <- abs(rescale(log(s), to = c(0, 1)) - 1)
-  # alpha=rescale(log((alpha*clinical)+0.01),to =c(0,1))
+        i <- 2
+        while (i <= n.cell.lines) {
+            df$rank[which(df$cell.line == unique(df$cell.line)[i])] <- i
+            i <- i + 1
+        }
+        #max cell line number - colors
+        colors <- c("#00AFBB", "#E7B800", "#FC4E07","#81EE81","#DA70D6")
+    }
 
-  # alpha=abs(rescale(s,to = c(0,1))-1)
-  df3 <- cbind(df2, alpha[match(df2$cmap.name.and.cell.line, unique(df2$cmap.name.and.cell.line))])
-  names(df3)[12] <- "alpha"
-  # df3$cmap.name.and.cell.line=gsub("alpha","α",df3$cmap.name.and.cell.line)
-  # df3$cmap.name.and.cell.line=gsub("nordihydroguaiaretic.acid","nordihydroguaiaretic\nacid",df3$cmap.name.and.cell.line)
-  # df3$cmap.name.and.cell.line=gsub("15-delta.prostaglandin.J2","15-delta\nprostaglandin J2",df3$cmap.name.and.cell.line)
-  # df3$cmap.name.and.cell.line=gsub("-0000","",df3$cmap.name.and.cell.line)
+    #jittering parameter
+    if (jittering == TRUE) {
+        df2 <- df %>% mutate(enrichment2 = jitter(df$enrichment, amount = 0.05))
+    } else {
+        df2 <- df
+        df2$enrichment2 <- df2$enrichment
+        df2$rank2 <- df2$rank
+    }
 
-  df3[4, ]$rank2 <- 1.2
-  df3[c(14, 17, 21), 11] <- df3[c(14, 17, 21), 11] - 0.25
-  df3[9, ]$rank2 <- 1.15
-  df3[10, ]$rank2 <- 0.8
-  df3[13, ]$enrichment2 <- -0.90
+    # renaming data
+    names(df2)[which(names(df2) == "p")] <- "-log2(pValue)"
+    df2$`-log2(pValue)` <- as.numeric(df2$`-log2(pValue)`)
+    df2$`-log2(pValue)` <- -log2(df2$`-log2(pValue)` + 0.01)
 
-  theme_set(
-    theme_bw() +
-      theme(
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), legend.position = "bottom",
-        legend.box = "vertical"
-      ) + theme_void()
-  )
+    #alpha parameter
+    alpha <- abs(rescale(df2$n, to = c(0, 1)))
 
-  ggplot(df3, aes(x = rank2, y = abs(enrichment2))) +
-    geom_point(aes(color = as.factor(...3), size = `-log2(pValue)`, alpha = alpha)) +
-    scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"), name = "Cell lines") +
-    scale_size(range = c(0.5, 20), name = "pValue", labels = c(0.05, 0.03, 0.02, 0.01, "<0.01")) + # Adjust the range of points size
-    geom_vline(xintercept = c(1), colour = "#00AFBB", linetype = "dashed") +
-    geom_vline(xintercept = 2, colour = "#E7B800", linetype = "dashed") +
-    geom_vline(xintercept = 3, colour = "#FC4E07", linetype = "dashed") +
-    scale_alpha("Bibliometric\nscore", labels = c("Very high", "High", "Intermediate", "Low", "Very low")) +
-    scale_x_continuous(breaks = seq_len(3)) +
-    geom_text(aes(label = cmap.name.and.cell.line), hjust = 0.5, vjust = 0.5) +
-    annotate("label", x = 0.82, y = 0.98, label = "Higher ES (1)", fill = "grey95") +
-    annotate("label", x = 0.82, y = 0.15, label = "Low ES (0.4)", fill = "grey95")
+    # assembling data
+    if (plot == "cell.lines") {
+        df3 <- cbind(df2, alpha, colors[df$rank])
+        names(df3)[which(names(df3) == "colors[df$rank]")] <- "cols"
+    } else {
+        df3 <- cbind(df2, alpha)
+    }
 
-  ggplot(df3, aes(x = rank2, y = abs(enrichment2))) +
-    geom_point(aes(color = as.factor(...3), size = alpha, alpha = 0.8)) +
-    scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"), name = "Cell lines") +
-    scale_size(range = c(0.5, 20), name = "Bibliometric\nscore", labels = c(1, 0.8, 0.5, 0.2, 0), breaks = c(0, 0.2, 0.5, 0.8, 1)) + # Adjust the range of points size
-    geom_vline(xintercept = c(1), colour = "#00AFBB", linetype = "dashed") +
-    geom_vline(xintercept = 2, colour = "#E7B800", linetype = "dashed") +
-    geom_vline(xintercept = 3, colour = "#FC4E07", linetype = "dashed") +
-    scale_x_continuous(breaks = seq_len(3)) +
-    geom_text(aes(label = cmap.name.and.cell.line), hjust = 0.5, vjust = 0.5) +
-    annotate("label", x = 0.82, y = 0.98, label = "Higher ES (1)", fill = "grey95") +
-    annotate("label", x = 0.82, y = 0.15, label = "Low ES (0.4)", fill = "grey95")
+    # x final position
+    df3$rank2 <- df3$rank + rescale(as.numeric(df3$specificity), to = c(-0.5, 0.5))
 
-  if (!(is.null(output_path))) {
-    ggsave("../plots/bubble_cmap.png")
-    save.image(file = "../plots/bubble.data.Rdata")
-  }
+    #transparency settings
+    breaks.alpha <- c(seq(min(df3$n), max(df3$n), (max(df3$n) / 4)), max(df3$n))
+    if (sum(duplicated(breaks.alpha)) > 0) {
+        breaks.alpha <- unique(breaks.alpha)
+    }
+    p <- df3$`-log2(pValue)`
+    breaks.p <- 1 / (2^seq(-log2(0.05), max(p), 0.5))
+    max.es <- round(max(abs(df3$enrichment)), 2)
+    min.es <- round(min(abs(df3$enrichment)), 2)
+
+    #plot settings
+    theme_set(
+        theme_bw() +
+            theme(
+                panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                panel.background = element_blank(), legend.position = "bottom",
+                legend.box = "vertical"
+            ) + theme_void()
+    )
+
+    #ggplot non global variables - cran note
+    rank2 <- enrichment2 <- cols <- drug <- NULL
+
+    #plots
+    if (plot == "cell.lines") {
+        bubble_pl <- ggplot(df3, aes(x = rank2, y = abs(enrichment2))) +
+        geom_point(aes(color = df3$cols, size = df3$`-log2(pValue)`, alpha = alpha)) +
+        scale_color_manual(values = colors[seq_len(n.cell.lines)], name = "Cell lines", labels = unique(df3$cell.line)) +
+        geom_vline(xintercept = seq_len(n.cell.lines), colour = colors[seq_len(n.cell.lines)], linetype = "dashed", alpha = 0.5) +
+        scale_size(range = c(0.5, 10), name = "pValue", labels = round(breaks.p, 2), limits = c(-1, 10)) + # Adjust the range of points size
+        scale_alpha("Number of replicats", labels = breaks.alpha) +
+        scale_x_continuous(breaks = seq_len(3)) +
+        geom_text(aes(label = drug), hjust = 0.5, vjust = 2, alpha = 0.5) +
+        annotate("label", x = min(df3$rank2) - 0.1, y = max(abs(df3$enrichment2)) + 0.1, label = paste("ES max", max.es, sep = " "), fill = "grey95") +
+        annotate("label", x = min(df3$rank2) - 0.1, y = min(abs(df3$enrichment2)) - 0.1, label = paste("ES min", min.es, sep = " "), fill = "grey95")
+    } else {
+        bubble_pl <- ggplot(df3, aes(x = rank2, y = abs(enrichment2))) +
+        geom_point(aes(color = "#00AFBB", size = df3$`-log2(pValue)`, alpha = alpha)) +
+        geom_vline(xintercept = 1, colour = "#FC4E07", linetype = "dashed", alpha = 0.5) +
+        geom_text(aes(label = df3$`cmap name`), hjust = 0.5, vjust = 2, alpha = 0.5) +
+        scale_size(range = c(0.5, 10), name = "pValue", labels = round(breaks.p, 2), limits = c(-1, 10)) + # Adjust the range of points size
+        scale_alpha("Number of replicats", labels = breaks.alpha) +
+        annotate("label", x = min(df3$rank2) - 0.1, y = max(abs(df3$enrichment2)) + 0.1, label = paste("ES max", max.es, sep = " "), fill = "grey95") +
+        annotate("label", x = min(df3$rank2) - 0.1, y = min(abs(df3$enrichment2)) - 0.1, label = paste("ES min", min.es, sep = " "), fill = "grey95") +
+        guides(color = FALSE)
+    }
+
+    #output
+    if (!(is.null(output_path))) {
+        if  (str_sub(output_path, start= -1)!="/")
+            {output_path=paste(output_path,"/",sep="")}
+        ggsave(paste(output_path,"bubble_cmap.png",sep=""))
+        save.image(file = paste(output_path,"./bubble.cmap.Rdata",sep=""))
+    }
+
+    if (return.gg.table == TRUE) {
+        return(df3)
+    } else {
+        print(bubble_pl)
+    }
 }

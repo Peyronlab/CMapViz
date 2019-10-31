@@ -7,12 +7,14 @@ Author: Raphaël Bonnet [aut, cre], Jean-François Peyron[aut,ths]
 Maintainer: Raphaël Bonnet <raphael.bonnet@univ-cotedazur.fr>
 Description: Automatically displays graphical visualization for exported data table from CMap (2006) <doi:10.1126/science.1132939>. 
   It allows the representation of the statistics (p-value and enrichment) according to each cell lines in the form of a bubble plot. 
-  Returns a ggplot object.
+BugReports: https://github.com/Peyronlab/CMapViz/issues
 Imports:
   readxl,
   ggplot2,
   dplyr,
-  scales
+  scales,
+  reshape2,
+  stringr
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
