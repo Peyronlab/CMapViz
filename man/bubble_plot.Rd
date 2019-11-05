@@ -28,14 +28,17 @@ bubble_plot(path, plot, enrichment, abs.enrich.cutoff=NULL, n.rep.cutoff=NULL ,
 ggplot object - bubble plot
 }
 \description{
-This function allows the user to represent the CMap result table (broadinstitute)
+This function allows the user to represent the Connectivity Map (CMap) result table (broadinstitute)
 under the form of a bubble plot representing statistics and cell lines:
 - each drug is represented along the y axis according to its enrichment value
 - each drug is represented along the x axis according to the cell line tested and
-whithin the cell line according to batch specificity (0-50% <- vertical line -> 50-100%)
+within the cell line according to batch specificity (0-50% <- vertical line -> 50-100%)
 }
 \examples{
 file.path <- system.file("extdata", "example.xls", package = "CMapViz")
+#display results by cell lines, with negative enrichment (absolute cutoff: 0.5), and at least n=5.
+#molecule position with respect of dotted line is the specificity of the molecule itself:
+left side of dotted line if specificity < 50 or right side of dotted line if specificity > 50 )
 bubble_plot(file.path,
     plot = "cell.lines", enrichment = "negative", abs.enrich.cutoff = 0.5,
     n.rep.cutoff = 5, output_path = NULL

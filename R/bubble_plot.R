@@ -8,11 +8,11 @@
 #' @import stringr
 #' @title Bubble plot of CMap output table
 #' @description
-#' This function allows the user to represent the CMap result table (broadinstitute)
+#' This function allows the user to represent the Connectivity Map (CMap) result table (broadinstitute)
 #' under the form of a bubble plot representing statistics and cell lines:
 #' - each drug is represented along the y axis according to its enrichment value
 #' - each drug is represented along the x axis according to the cell line tested and
-#' whithin the cell line according to batch specificity (0-50% <- vertical line -> 50-100%)
+#' within the cell line according to batch specificity (0-50% <- vertical line -> 50-100%)
 #' @name bubble_plot
 #' @rdname bubble_plot
 #' @aliases bubble_plot
@@ -30,6 +30,9 @@
 #'
 #' @examples
 #' file.path <- system.file("extdata", "example.xls", package = "CMapViz")
+#' #display results by cell lines, with negative enrichment (absolute cutoff: 0.5), and at least n=5.
+#' #molecule position with respect of dotted line is the specificity of the molecule itself:
+#' left side of dotted line if specificity < 50 or right side of dotted line if specificity > 50 )
 #' bubble_plot(file.path,
 #'     plot = "cell.lines", enrichment = "negative", abs.enrich.cutoff = 0.5,
 #'     n.rep.cutoff = 5, output_path = NULL
@@ -49,15 +52,36 @@ bubble_plot <- function(path,
 
     # import the specified data
     if (plot == "cell.lines") {
-        sheet <- "by cmap name and cell line"
+        expected=c("rank","cmap.name.and.cell.line","mean","n","enrichment",
+                "p","specificity","percent non-null")
+        sheet <- 2         #"by cmap name and cell line"
         table <- read_excel(path, sheet = sheet)
+
+        #error handling sheet column names
+        if (!identical(colnames(table),expected))
+        {
+                stop('The input file is not properly formated:
+                -please use the original output excel table from the Connectivity Map (CMap)
+                -second-sheet column names shoud be: \n\t\t',paste(expected,collapse=', '))
+        }
         names <- table$cmap.name.and.cell.line
         names_and_cl <- colsplit(names, "-(?!.*-)", c("drug", "cell.line"))
         rank <- rep(1, dim(table)[1])
         df <- cbind(names_and_cl, table[3:dim(table)[2]], rank)
     } else if (plot == "molecules") {
-        sheet <- "by cmap name"
+        expected=c("rank","cmap name","mean","n","enrichment",
+                "p","specificity","percent non-null")
+        # sheet <- "by cmap name"
+        sheet = 1
         table <- read_excel(path, sheet = sheet)
+
+        #error handling sheet column names
+        if (!identical(colnames(table),expected))
+        {
+                stop('The input file is not properly formated:
+                -please use the original output excel table from the Connectivity Map (CMap)
+                -first-sheet column names shoud be: \n\t\t',paste(expected,collapse=', '))
+        }
         rank <- rep(1, dim(table)[1])
         df <- cbind(table[2:dim(table)[2]], rank)
     }
@@ -185,7 +209,7 @@ bubble_plot <- function(path,
         if  (str_sub(output_path, start= -1)!="/")
             {output_path=paste(output_path,"/",sep="")}
         ggsave(paste(output_path,"bubble_cmap.png",sep=""))
-        save.image(file = paste(output_path,"./bubble.cmap.Rdata",sep=""))
+        save.image(file = paste(output_path,"bubble.cmap.Rdata",sep=""))
     }
 
     if (return.gg.table == TRUE) {
