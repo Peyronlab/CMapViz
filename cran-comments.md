@@ -23,3 +23,13 @@ What will happen if the user's sheet has another name?
 
 Please fix and resubmit. 
 
+### v0.0.3
+
+
+Flavor: r-devel-windows-ix86+x86_64
+Check: for unstated dependencies in examples, Result: WARNING
+  Warning: parse error in file 'lines':
+  6: unexpected symbol
+  23: #molecule position with respect of dotted line is the specificity of the molecule itself:
+  24: left side
+  

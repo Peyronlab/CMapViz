@@ -2,7 +2,7 @@ Package: CMapViz
 Type: Package
 Title: Representation Tool For Output Of Connectivity Map (CMap) Analysis 
 Date: 2019-10-25
-Version: 0.0.3
+Version: 0.0.4
 Author: Raphaël Bonnet [aut, cre], Jean-François Peyron[aut,ths]
 Maintainer: Raphaël Bonnet <raphael.bonnet@univ-cotedazur.fr>
 Description: Automatically displays graphical visualization for exported data table from Connectivity Map (CMap) (2006) <doi:10.1126/science.1132939>. 
