@@ -19,7 +19,7 @@
 #' @usage
 #' bubble_plot(path, plot, enrichment, abs.enrich.cutoff=NULL, n.rep.cutoff=NULL ,
 #'         jittering=FALSE, return.gg.table= FALSE, output_path = NULL)
-#' @param path path of the excel file
+#' @param path path of the excel file (permutated results)
 #' @param plot what data to plot: molecules only (plot="molecules") or molecules by cell lines batch (plot="cell.lines")
 #' @param enrichment whether to plot positive or negative enrichment
 #' @param abs.enrich.cutoff minimum value of enrichment to include a batch

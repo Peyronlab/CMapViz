@@ -1,7 +1,7 @@
 # CMapViz
-Vizualisation tool for cmap tables
+Visualization tool for CMap tables
 
-This package allows the representation of Connnectivity map results table in the form of a bubble plot.
+This package allows the representation of Connectivity map results table in the form of a bubble plot.
 
-It takes in input the **permutated result table**  exported from the Cmap website. 
+It takes in input the **permutated result table**  exported from the CMap website. 
 
